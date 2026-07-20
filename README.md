@@ -32,8 +32,8 @@ The system is **provider-agnostic**: a single `call_llm()` abstraction (`provide
 
 **Agent**
 - Generates code from natural-language requests via a configurable LLM provider
-- Validates generated code automatically using `ruff`
-- Every generation is validated before being returned
+- Validates generated code automatically using `ruff`, checking style (`E`), correctness (`F`), common bug patterns (`B`, via flake8-bugbear), and complexity (`C90`)
+- Every generation is validated before being returned to the user
 
 **Listener**
 - Logs every interaction (prompt, generated code, provider, validation result, response time) as structured JSONL
@@ -49,10 +49,17 @@ The system is **provider-agnostic**: a single `call_llm()` abstraction (`provide
 ![Dashboard overview](screenshots/dashboard-overview.png)
 ![Logged interactions](screenshots/dashboard-logs.png)
 
-From an initial batch of 18 logged interactions:
-- 100% validation pass rate (worth noting: this reflects simple, well-scoped test prompts — a natural next step is testing against more ambiguous or complex requests to see where validation actually catches issues)
-- Average response time: 1.82s (local Ollama model)
+From a batch of **28** logged interactions:
+- **88.9%** validation pass rate
+- Average response time: **1.89** (local Ollama model, `qwen2.5-coder:7b`)
 - Most frequent request themes: string/list manipulation, conditional checks
+
+**A note on validation strictness:** the validator's `ruff` rule set was deliberately expanded partway through development after an initial test batch showed a misleadingly high 100% pass rate. The default rule set only checked basic style and correctness (`E`, `F`); it wasn't catching subtler issues like bare `except` clauses or mutable default arguments. After adding the `B` (bugbear) and `C90` (complexity) rule sets, the validator correctly began catching real problems, including:
+- `E722` — bare `except:` clauses that silently swallow errors
+- `B006` — mutable default arguments (a classic Python footgun)
+- `F821` — references to undefined variables
+
+This was a useful finding in itself: a validation pipeline is only as strict as the rules it's configured to check, and it's worth auditing what a "passing" result actually guarantees.
 
 ## Setup
 
@@ -102,3 +109,10 @@ Python · Anthropic Claude API (Claude-compatible via provider abstraction) · O
 - Security scanning (e.g. `bandit`) as an additional validation stage
 - NLP-based keyword extraction instead of basic word-frequency counting
 
+## Relevance
+
+This project was built while exploring two related problem spaces:
+1. **AI coding agents** that generate code and validate it against standards
+2. **Listener systems** that capture and analyze developer/system interactions to surface actionable insights
+
+CodeTrace combines both into a single, small, end-to-end system.
