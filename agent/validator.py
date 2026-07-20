@@ -15,7 +15,7 @@ def validate_code(code: str) -> tuple[bool, str]:
 
     try:
         result = subprocess.run(
-            ["ruff", "check", tmp_path],
+            ["ruff", "check", "--select", "E,F,B,C90", tmp_path],
             capture_output=True,
             text=True, 
         )
